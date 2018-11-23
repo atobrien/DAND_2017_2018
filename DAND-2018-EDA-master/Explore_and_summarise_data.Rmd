@@ -1,0 +1,778 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+# Real-estate Transcation Behavior in Sacramento
+# *by Anthony Terrence O'Brien Villate MD*
+
+========================================================
+
+```{r, include=FALSE}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+library(knitr)
+library(ggplot2)
+library(GGally)
+library(scales)
+library(memisc)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(raster)
+library(maps)
+library(mapdata)
+library(devtools)
+library(ggmap)
+library(psych)
+library(gridExtra)
+```
+
+```{r, include=FALSE}
+# Load the Data
+#getwd() # read the working directory
+# setwd('~Desktop') To set the working directory place the location after 
+# the tilde
+df <- read.csv("C:/Users/Anthony O\'Brien/Dropbox/1. Organized/1. Courses,lectures etc/9 .Nanodegree DAND/Term 2/Projects/Project  6 Explore and Summarise Data/Sacramento.csv")
+```
+
+# Abstract
+In this analysis we explore dataon real estate transactions in 2016 over a five 
+day period. The key goal of this study was to determine what were the main 
+factors in the dataset which drove the price of the real estate transactions.
+
+# Introduction
+SpatialKey is a private company which buids geospatial insturance technology 
+that simplifies how insureers view risk by building catastrophe data, mapping, 
+and analytics. As part of their training resources, Spatialkey provides a 
+plethora of datasets with geospatial information, which can be downloaded from
+this url: https://support.spatialkey.com/spatialkey-sample-csv-data/
+
+This.csv file is the Sacramento real estate transcations (SRET) file provided by 
+SpatialKey. The file is a list of 985 real estate transactions in the Sacramento
+county reported over a five-day period in 2016, as reported by the
+[Sacramento Bee](http://www.sacbee.com/). 
+
+[*The Sacramento Bee*](https://en.wikipedia.org/wiki/The_Sacramento_Bee)
+is the largest newspaper in Sacramento, the fifth largest newspaper in 
+California, and the 27th largest paper in the USA. 
+
+[Sacramento County](https://en.wikipedia.org/wiki/Sacramento_County,_California)
+is a county of the U.S State of California, and according to the 2010 census
+the population was 1,418,788. Also it contains the state capital of California,
+[Sacramento](https://en.wikipedia.org/wiki/Sacramento,_California), 
+which has an estimated popualtion of 493,025; making it the 6th largest 
+city in California.
+
+# Summary of the Data Set
+
+The SRET dataset was chosen as it provides a rich range of datatypes,
+in a tidy format, with the option for practicing multiple editing,
+analytical and visual techniques. 
+
+The datset itself contains the following variables:
+
+1. street: The physical address of the property.
+            Categorical variable, and it will be dropped due to redundancy.
+
+2. city: The city of the property within the Sacramento county.
+            Categorical variable.
+        
+3. zip: The USPS Zone Improvement Plan used in postal addresses in the USA.
+            Categorical variable organized in a numeric format.
+  
+4. state: The state in which the poperty is located.
+            Categorical variable, which will be dropped as it does not provide
+            useful information. All proerties are in the state of California
+            
+5. beds: The number of beds the property has.
+            Quantitative variable    
+    
+6. baths: The number of bathrooms the property has.
+            Quantitative variable    
+      
+7. sq__ft: The square feet the property has.
+            Quantitative variable which will be converted to square meters
+            
+8. type: The type of property. 
+            Categorical variable
+
+9. sale_date: The day the property was sold.
+            timedate variable which will be parsed into day
+
+10. price: The price at which the propery was sold.
+            Quantitative variable    
+
+11. latitude: The geospatial location based on latitude of the property.
+            Geospatial data
+
+12. longnitude: The geospatial location based on longnitute of the property.
+            Geospatial data
+
+*Please note, all referenced websites were viewed on April 18th 2018*
+
+#Dataset exploration and transformation
+
+First I review the dataset dimensions, variables and structure
+
+```{r, include=FALSE}
+dim(df) #to test the number of rows and columns in the dataset (i.e. dimensions)
+names(df) # to test the header names of the dataser
+str(df) # structure of the dataset
+```
+
+The above dataset has a few variables which I want to drop or change. 
+Particularly I want to remove street, stat and sale_datee, and 
+convert sq__ft to square meters.
+
+```{r, include=TRUE}
+df <- subset(df, select = -c(street, state))# drops street and state variable
+df['sq_m'] <- df$sq__ft*0.093# add a new column for data which is square meters
+#test <-strsplit(as.character(df$sale_date), 'May') #parse data
+#df['sale_day'] <-do.call(rbind, test) #add the day to the datafram
+#df <- subset(df, select = -c(sale_date)) #drop the datetime
+df <- subset(df, select = -c(sq__ft)) #drop the square feet
+```
+
+I review the dataset after the transformation.   
+
+```{r, include=FALSE}
+dim(df) #to test the number of rows and columns in the dataset (i.e. dimensions)
+names(df) # to test the header names of the dataset
+str(df) # structure of the dataset
+```
+
+# Univariate Plots Section
+
+## Summary of city data
+
+As a quick overview of the cities included in the analysis, I perform a quick,
+aggregate of the variable city using a table, and then by visualizing the data
+in a bar and pie chart
+
+```{r, include=FALSE}
+summary(df$city)
+```
+
+```{r, include=FALSE}
+ggplot(df, aes(x=city, fill=city)) + 
+  geom_bar() #simple bar chart
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bp<- ggplot(df, aes(x="", y=city, fill=city))+
+geom_bar(width = 1, stat = "identity")
+pie <- bp + coord_polar("y", start=0) + theme(axis.text = element_blank())
+#convert barchart data into circular coordinates
+pie
+```
+
+The pie chart code is derived from the following url http://www.sthda.com.
+
+What stands out form this initial analysis is that there are 3 cities with
+an extraordinarly higher number of transactions relative to the other cities.
+These three cities are Sacramento, Elk Grove and Lincoln.
+
+## Summary of house types
+
+From this point onwards I perform similar exploratory analysis and
+visualizations on the remainding variables. 
+
+```{r, include=FALSE}
+summary(df$type)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(df, aes(x=type, fill=type)) + 
+  geom_bar()
+```
+
+From initial inspection it does not seem that the variable type will provide 
+much insight into the data. 
+
+## Summary of number of beds
+
+```{r, include=TRUE,}
+summary(df$beds)
+```
+
+```{r, include=TRUE,}
+ggplot(df, aes(x=beds, fill=beds)) + 
+  geom_bar()
+```
+
+There is a condierable number of missing data in beds, which can be later 
+removed. Also, This data seems like it would provide useful information
+for understanding the transactional patterns in the data. Also at present 
+this variable is an integer which should be converted to a factor 
+variable to really appreciate its usefulness. 
+
+## Summary of number of baths
+
+```{r, include=TRUE,}
+summary(df$baths)
+```
+
+```{r, include=TRUE,}
+ggplot(df, aes(x=baths, fill=baths)) + 
+  geom_bar()
+```
+
+The variable baths has similar properties as the variable beds. 
+
+## Summary of sales price
+
+```{r, include=TRUE,}
+summary(df$price)
+```
+
+```{r, include=TRUE,}
+ggplot(aes(x = price), data = df) +
+  geom_histogram() +
+  scale_x_continuous()
+```
+
+This is one of the most important variable sin this dataset as we are 
+studying property sales. Visually we note a high number of missing
+values and that the data is skewed to the right due to high sales numbers.
+
+## Summary of square meters for property 
+
+```{r, include=FALSE}
+summary(df$sq_m)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = sq_m), data = df) +
+  geom_histogram() +
+  scale_x_continuous()
+```
+
+This variable shares similar proerties like the varibale price
+
+# Univariate Analysis
+
+With this initial univariate analysis, there are interesting findings to report:
+
+1) There is a substantial amount of property located in Sacramento (n=434),
+followed by Elk Grove (n=114) and Lincoln (n=72).
+
+2) Most properties are reported as Residential.
+
+3) Most properties have 3 bedrooms and 2 bathrooms.
+
+4) The median cost of properties is $213,800, however there are also outlier
+above \$750,000 with a max of $884,800.
+
+5) The median square meter space of the properties is 121.3 m^2, with the third
+quartile in 159.80m^2. Interestingly the max area reported is 541.4. 
+
+6) In the square meter area for properties there is a significant amount of
+properties that report 0 as their area. The same for price. 
+
+Some initial questions which this analysis provokes are:
+
+1) It would be interesting to see if there are any particular properties of
+Sacramento, Elk Grove and Lincoln, relative to the available data,
+that can suggest why they are so popular as a sales area.
+
+2) Additionally it will be interesting to run similar analysis for properties 
+which are considerably outside the normal ditribution of the data. For example,
+this can include data for properties which are exceptionally pricey or that have
+large surface area for sale. 
+
+3) Likewise it will be interesting to see if there are any particular patterns 
+for unreported data (eg. they may be from the same area, or for certain 
+listings).
+
+# Bivariate Plots and Analysis Section
+
+The variables ''latitude' and 'longitude' contain geospatial data. This data
+can be used to create a scatterplot map of the property areas. The goespatial
+information can be used to visually observe sales patterns in the data. 
+Potentially helping us to generate hypothesis to answer questions raised in
+the Univariate analysis section.
+
+##What is the geospatial relationship between sales transactions and location?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x=longitude, y=latitude), data=df)+
+  geom_point() #scatter plot 
+```
+
+Leveraging the geospatial data, we tag its color using the city variable
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x=longitude, y=latitude, color= city), data=df)+
+  geom_point() #scatter plot colored by city
+```
+
+With the above information we can overlay a map to observe how prevalent
+sales are relative to the city in which they were sold. 
+
+Therefore, this data is combined with map images pulled from google maps
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df) #create a bounding box according to latitude and longitude
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain") #call on google maps and bounding box to set map frame for scatter plot data
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= city)) #plot scatter plot on google maps
+```
+
+This mapping procedure was derived from teh following url:
+http://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+
+From this analysis we see that the three largest areas are representative of the
+following: 1) Sacramento is Californias capital city and therefore a main point
+of concentration for sales. 2) The next two main areas for sales (i.e. Elk 
+Grove and Lincoln) are in the immediate vicinity of Sacramento (the south and 
+North East, respectively). We also see that the further the areas are from 
+Sacramento the less number of sales transcations occur. 
+
+##Does the type of property affect the distribution of the sale?
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain")
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= type))
+```
+
+Bsaed on the map image above it does not seem that the type of property affects
+the geospatial distribution of the sale. It seems that the type of property is 
+not a useful variable for describing the data. Frpm this point on I will not
+include the type of property in the analysis.
+
+## Distribution matrix to find hidden relationships
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+pairs.panels(df[,1:9], pch = 19)
+```
+
+From the  distribution matrix we see that:
+
+1) The number of bedrooms and bathrooms a property has is highly correlated (i.e
+as the number of bedrooms increases the number of bathrroms increases, r = 0.84)
+
+2) Similarly, there is a weak positive relationship between the price of a 
+property and the number of bedrooms and bathrooms (r = 0.34 and r = 0.42 
+respectively).
+
+3) Expectedly there is also a moderate posiitve relationshp between the 
+square meter area and number of bedrooms (r=0.68) and bathrooms(r = 0.67) 
+
+4) Intersetingly there is also a weak positive relationship between the price 
+and the square meter area (r = 0.33). 
+
+The above data suprisingly suggests that the price of a property while related
+to its square meter area is not that substantially correlated to size. 
+
+After reviewing the distribution matrix, I was curious if the location
+may play more of a factor in determining sales prices rather than the 
+number of bedrooms, bathrooms or size. 
+
+## Converting integers to factors 
+
+Knowing that the above variables for beds and baths are set as an integer, 
+I convert them to factor variables and plot them in relation to the size
+and price of the property sold. 
+
+```{r, include=TRUE}
+df[,'beds_factor'] <- as.factor(df[,'beds']) #convert data to factor variables
+df[,'baths_factor'] <- as.factor(df[,'baths'])
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+p1 <- ggplot(df, aes(beds_factor, sq_m, color=beds_factor)) +
+  geom_boxplot()
+p2 <- ggplot(df, aes(baths_factor, sq_m, color=baths_factor)) +
+  geom_boxplot()
+p3 <- ggplot(df, aes(beds_factor, price, color=beds_factor)) +
+  geom_boxplot()
+p4 <-ggplot(df, aes(baths_factor, price, color=baths_factor)) +
+  geom_boxplot()
+grid.arrange(p1, p3, p2, p4)
+```
+
+The above grid method layout was derived from the following URL:
+https://cran.r-project.org/web/packages/egg/vignettes/Ecosystem.html
+
+At this point I replace 0 with NA and remove from the plot
+
+```{r, include=TRUE}
+df[, 11:12][df[, 11:12] == 0] <- NA #convert 0 to NA
+```
+
+And then I replot the above graphs excluding the missing variables
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+p1 <- ggplot(df[!is.na(df$beds_factor), ], aes(beds_factor, sq_m, color=beds_factor)) +
+  geom_boxplot()
+p2 <- ggplot(df[!is.na(df$baths_factor), ], aes(baths_factor, sq_m, color=baths_factor)) +
+  geom_boxplot()
+p3 <- ggplot(df[!is.na(df$beds_factor), ], aes(beds_factor, price, color=beds_factor)) +
+  geom_boxplot()
+p4 <-ggplot(df[!is.na(df$baths_factor), ], aes(baths_factor, price, color=baths_factor)) +
+  geom_boxplot()
+grid.arrange(p1, p3, p2, p4)
+```
+
+The method of NA removal was obtained from the following URL:
+https://stackoverflow.com/questions/11403104/remove-unused-factor-
+levels-from-a-ggplot-bar-plot
+
+By converting the number of bedrooms and the number of bathrooms to a factor 
+variable, we unveil a relationship in which in the size per square meter and the
+price increase relative to the number of bathrooms and bedrooms.
+
+Altough it is intersting to see that this relationship does not exactly hold
+for properties with 6 or more bedrooms or 5 bathrooms. Other aspects like
+location may have influenced this outcome for price. Though it is not clear
+why th size of location would decrease relative to the number of rooms.
+
+Given the relationship of bedroom and bathroom with price and
+size,  plot thevariable beds and baths relative to the geospatial
+data. 
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain")
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= beds_factor))
+```
+
+In general it is difficult to discern any patterns, other than areas further
+away from Sacramento (South, South-East, North and North-East) have a 
+higher number of bedrooms relative to Sacramento.
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain")
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= baths_factor))
+```
+
+Like number of bedrooms, there is a distribution which seems to lead to
+increased number of bathrooms the furhter away one mooves from Sacramento.
+
+## Price range according to geographic location
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain")
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= price))
+```
+
+The above map suggests that tmore expensive areas are found outside of the 
+Sacramento area, and more towards the north east around Granite Bay, Folsom, 
+El Dorado Hills, and Cameron Park. While a couple of more expensive sales also
+occured in the bottom right corner of the map around the Wilton area. 
+
+## Location and size
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_bbox
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain")
+ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color= sq_m))
+```
+
+While not as prominent a feature, as one goes out of Sacramento area the 
+square meter area per property tends to increase. 
+
+## Price and size
+
+Prior analysis suggests that there is a linear relationship between
+size and property. Therefore to study this relationship I perform a 
+scatterplot.
+
+```{r, include=FALSE}
+w1 <- ggplot(aes(x = price, y = sq_m), data = df)+
+  geom_point()
+w2 <-ggplot(aes(x = price, y=sq_m, color=beds_factor), data=df)+
+  geom_point()
+w3 <-ggplot(aes(x=price, y=sq_m, color=baths_factor), data=df)+
+  geom_point()
+w4 <-ggplot(aes(x=price, y=sq_m, color=city), data=df)+
+  geom_point()
+grid.arrange(w1) #use of gird arrange to plot following plots
+```
+
+In general there is a visual relationship betwen price and size. However this 
+relationship seems to hold until around $375,000.
+
+To confirm this observation I plot a linera regression and lowess plot, on top
+of the scatterplot. 
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = price, y = sq_m), data = df) + 
+  geom_point(alpha=1/6, color='BLACK') +
+  geom_smooth(method = 'lm', se = TRUE, color = 'red') +
+  geom_smooth(color = 'blue', se = FALSE) #simple scatter plot with regression line and loess line 
+```
+
+From here, I zoom in on to the data and then readjust the plot to redraw the 
+regression lines as if the data after $375,000 was not considered
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = price, y = sq_m), data = df) + 
+  geom_point(alpha=1/10, color='BLACK') +
+  geom_smooth(method = 'lm', se = FALSE, color = 'red') +
+  geom_smooth(color = 'blue', se = TRUE) +
+  coord_cartesian(xlim = c(1551, 375000), ylim = c(15, 225)) #zoom on x and y axis
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = price, y = sq_m), data = df) + 
+  geom_point(alpha=1/10, color='BLACK') +
+  geom_smooth(method = 'lm', se = FALSE, color = 'red') +
+  geom_smooth(color = 'blue', se = TRUE) +
+  xlim(1551, 375000) +
+  ylim(15, 225) #removal of x and y axis limits
+```
+
+We see that when we consider the parsed data alone that there is a strong linear
+relationship between size and price.
+
+At this point I hypothesize that the relationship between price and size is 
+relative to the properties location. Similarly, as number of bedrooms and bath
+rooms relate to size, I plotted a similar scatter Plot
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(w4)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(w2, w3)
+```
+
+We see that most of the pricing data is determined by Sacramento, and that 
+anything under or equall to the median number of bedrooms and bathrooms is 
+generally agregated within the area represented by Sacramento.  
+
+
+# Multivariate Plots and Analysis Section
+
+Now that I have visually analyzed the data, I will run a few univariate linear 
+regression models separately to determine which significant relationships cna be 
+added to a multiple linear regression model. 
+
+## Regresion model
+
+```{r, include=FALSE,}
+m1 <- lm(I(price) ~ I(sq_m), data=df)
+summary(m1)
+mtable(m1)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+m1 <- lm(I(price) ~ I(city), data=df)
+summary(m1)
+mtable(m1)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+m1 <- lm(I(price) ~ I(beds_factor), data=df)
+summary(m1)
+mtable(m1)
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+m1 <- lm(I(price) ~ I(baths_factor), data=df)
+summary(m1)
+mtable(m1)
+```
+
+From the initial univariate analysis, we see that city relates best to the 
+transaction listings, followed by number of bedrooms, then bathrooms, and 
+finally square meters. 
+
+Using this insight the multivariate model will be created accordingly.
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+m1 <- lm(I(price) ~ I(city), data=df)
+m2 <- update(m1, ~ . + beds_factor)
+m3 <- update(m2, ~ . + baths_factor)
+m4 <- update(m3, ~ . + sq_m)
+mtable(m1, m2, m3, m4)
+```
+
+From the initial univariate regression analysis, we see that the most
+expensive area is Granite Ville. However upon considering square meter, number
+of bedrooms and bathrooms Garden Valley ends up having the most expensive
+proeprties, then Granite Ville. 
+
+# Visualization of sales
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "roadmap", zoom=10)
+a1 <- ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color=city, alpha=1/500))+
+  stat_ellipse(data= df, aes(x=longitude, y=latitude, group=city),type = "norm")+
+  labs(title="Geospatial distribution of sales by city", y="Latitude", x="Longitude")
+p5 <- a1 + theme(legend.position="left") + theme(legend.position='none') + theme(plot.title = element_text(hjust = 0.5, size=11)) #the above is the same method for plotting maps except I also save them to a temporary file to manipulate hte titles and legends
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "roadmap", zoom=10)
+a2 <- ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color=price))+
+  stat_ellipse(data= df, aes(x=longitude, y=latitude, color=price, group=city),type = "norm")+
+  labs(title="Geospatial distribution of sales by price", y="Latitude", x="Longitude")
+p6 <- a2 + theme(legend.position="left") + theme(plot.title = element_text(hjust = 0.5, size=11)) + labs(color='Price') + theme(legend.position='none')  
+
+```
+
+```{r,  echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(p5, p6, ncol=2, bottom="In the graph to the right, lighter colors are equivalent to higher sales")
+```
+
+From the above graph we note that the sales density is largest towards 
+Sacramento and immediately adjascent areas. However, sales prices increase
+the further out the property is relative to Sacramento.
+
+This is interesting because generally in large cities in the Americas, property
+prices tend to increaes the closer one is to the main city, for example this 
+is observed in San Francisco, Boston, New York, and even cities outside the
+USA like Bogota, Colombia. 
+
+The pricing patterns are paradoxical to what one would traditionally expect. 
+
+------
+
+# Final Plots and Summary
+
+> **Tip**: You've done a lot of exploration and have built up an understanding
+of the structure of and relationships between the variables in your dataset.
+Here, you will select three plots from all of your previous exploration to
+present here as a summary of some of your most interesting findings. Make sure
+that you have refined your selected plots for good titling, axis labels (with
+units), and good aesthetic choices (e.g. color, transparency). After each plot,
+make sure you justify why you chose each plot by describing what it shows.
+
+### Plot One
+```{r  echo=FALSE, message=FALSE, warning=FALSE}
+
+
+d1 <-ggplot(aes(x=price, y=sq_m, color=city), data=df)+
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE, color = 'red') +
+  geom_smooth(color = 'blue', se = TRUE) + 
+  labs(y="Size of property in square meters", x=" Cost of property in USD")+
+  ggtitle("Cost of property relative to size and location") 
+
+
+
+d3 <- ggplot(aes(x=price, y=sq_m, color=city), data=df)+
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE, color = 'red') +
+  geom_smooth(color = 'blue', se = TRUE) +
+  xlim(1551, 375000) +
+  ylim(15, 225) +
+  labs(y="Size of property in square meters", x="Price in USD") + theme(legend.position="right")
+
+ 
+d1 + theme(plot.title = element_text(hjust = 0.5, size=11))
+```
+
+### Description One
+
+What we observe when plotting property prices relative to the location is that
+Sacramento city plays a huge role in stabilizing pricing property. As the 
+property gets further away from Sacramento, prices begin to become less linearly
+related to the property's size. 
+
+
+### Plot Two
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+bc_bbox <- make_bbox(lat = latitude, lon = longitude, data = df)
+bc_big <- get_map(location = bc_bbox, source = "google", maptype = "terrain", zoom=10)
+a2 <- ggmap(bc_big) + 
+  geom_point(data = df, mapping = aes(x = longitude, y = latitude, color=price))+
+  stat_ellipse(data= df, aes(x=longitude, y=latitude, color=price, group=city),type = "norm")+
+  labs(title="Geospatial distribution of sales by price", y="Latitude", x="Longitude")
+p6 <- a2 + theme(legend.position="right") + theme(plot.title = element_text(hjust = 0.5, size=11)) + labs(color='Price (USD)') 
+p6
+```
+
+### Description Two
+
+This plot helps to confirm insight provided by plot one, in which
+we observe that prices tend to rise the further away one gets from Sacramento.
+
+### Plot Three
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+p3 <- ggplot(df[!is.na(df$beds_factor), ], aes(beds_factor, price, color=beds_factor)) +
+  geom_boxplot() +
+  labs(y="Price of property in USD", x="Number of bedrooms") + theme(legend.position='none')  
+p4 <-ggplot(df[!is.na(df$baths_factor), ], aes(baths_factor, price, color=baths_factor)) +
+  geom_boxplot() + 
+  labs(y="Price of property in USD", x="Number of bathrooms") + theme(legend.position='none')  
+grid.arrange(p3, p4, top="Cost of propery relative to number of bedrooms or bathrooms")
+```
+```
+
+### Description Three
+
+In the third visualization, we note acknowledge there are other factors
+which can influence the price of a transaction other than location and size,
+such as the number of bedrooms and bathrooms. 
+
+In fact, we also note this in our multi-linear regression model, and point out
+how these two co-variates impact the cost of the most expensive property
+in this sample (see multi-linear regression section).
+
+------
+
+# Reflection
+
+I was interested in analyzing this particular set of data, because it contained
+an appropriate number of geolocalization information to construct geospatial
+maps, while still allowing me to apply the different techniques learnt during 
+the exploratory data analysis course. In addition to this, I am currently
+searching for property to rent and I thought it woudl be useful to leverage
+this opportunity to gain insight into a real life scenario. 
+
+A lot of the coding was straight forward, however I did have to try multiple
+different tools/techniques before being able to graph the map relative to the
+available data. I woudl say anything relating map data to the current data was
+a bit of a challenge, however geospatial maps were acomplished. Another 
+challenge I ran into was with parsing the date-time data. In the end, I dropped 
+the data, however in my initial attempt, I was able to separate the day from 
+the rest of the date-time data. Ulteimately the data was not useful so I dropped
+it. 
+
+I learnt to transform values in a column like 0 into NaN or NA, and recently 
+learnt that NA is a non-numeric value, while NaN is a numeric value. 
+
+Ultimately while I see the power of R to compute big data in mere seconds, and
+perform complex visualizations. I still prefer python. I'm also quite satisfied
+with the linear regression model generation. It was suprising to me that
+location was more indicative of pricing when compared to over variables like 
+size. I guess the old saying "location, location, location" really makes an 
+impact afterall. In the future this data, can be combined with a yearly account
+to really try and grasp deeper tendencies (afterall this data only represents
+sales in a 5 day period). Additionally, other variables like family size 
+would be interesting to integrate. Finally I would recommend that the creators
+of the dataset reorganize the variable type, because at present it is not very
+informative. 
